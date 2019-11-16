@@ -1,6 +1,9 @@
-var mysql = require('mysql');
+const mysql = require('mysql');
 
-var con = mysql.createConnection({
+const Dict = require('collections/dict');
+
+var con = mysql.createPool({
+    connectionLimit : 150,
     host: "localhost",
     user: "signapps",
     password: "signapps",
@@ -18,99 +21,209 @@ function currentDate(){
     return dd + '-' + mm + '-' + yyyy + '-' + hh + '-' + min + '-' + sec;
 }
 
-function generateID(){
-    var crypto = require('crypto');
-    var id = crypto.randomBytes(20).toString('hex');
-    return id;
-}
-
-function insertTicketNumber(id, number, con){
-    var sql = "INSERT INTO ticket_number (id_ticket, number) VALUES (?, ?)";
-    var values = [id, number];
-    con.query(sql, values, function(err, _){
-        if (err) throw err;
-        //console.log(number);
-    });
-}
-
-function insertTicket(numbers, con){
-    con.connect(function(err){
-        var today = currentDate().split('-');
-        var sql = `INSERT INTO ticket(id_ticket, date_added, time_added) VALUES (?, ?, ?)`;
-        var id = generateID();
-        var date = today[2]+'-'+today[1]+'-'+today[0];
-        var time = today[3]+':'+today[4]+':'+today[5]
-        var values = [id, date, time];
-        con.query(sql, values, function(err, result){
-            if(err) throw err;
-            //console.log("Insert into ticket successfull!");
+function selectSingleNumber(number,con){
+    return new Promise((resolve, reject) => {
+        var sql = "SELECT ticket_number.id_ticket FROM ticket_number WHERE number = ?";
+        var list = [];
+        con.query(sql, number, function(err, result, fields){
+            if (err) throw err;
+            for(var i = 0; i < result.length; i++){
+                list.push(result[i].id_ticket);
+            }
+            resolve(list)
         });
-        for(var i = 0; i < numbers.length; i++){
-            insertTicketNumber(id, numbers[i], con);
-        }
-        //console.log("Ticket inserted successfully!");
     });
 }
 
-function insertMultTickets(con, tickets){
-    /*con.connect(function(err){
-        if(err) throw err;
-    });*/
-    var sql = "INSERT INTO ticket(id_ticket, date_added, time_added) VALUES ?";
-    con.query(sql, [tickets], function(err, result){
-        if (err) throw err;
-        //console.log("Number of records inserted: " + result.affectedRows);
+function returnResult(result){
+    console.log(result);
+}
+
+function generateID(){
+    return new Promise((resolve, reject) => {
+        var crypto = require('crypto');
+        var id = crypto.randomBytes(20).toString('hex');
+        resolve(id);
     });
+}
+
+
+function insertTicket(ticket, con){
+    return new Promise((resolve, reject) => {
+        var sql = "INSERT INTO ticket(id_ticket, date_added, time_added) VALUES(?, ?, ?)";
+        con.query(sql, ticket, (err) => {
+            if (err) throw err;
+            console.log("Ticket inserted");
+            resolve([]);
+        });
+    })
+}
+
+
+function insertMultTickets(tickets, con){
+    return new Promise((resolve, reject) => {
+            var sql = "INSERT INTO ticket(id_ticket, date_added, time_added) VALUES ?";
+            con.query(sql, [tickets], function(err, result){
+                if (err) throw err;
+                console.log("Number of tickets inserted: " + result.affectedRows)
+                tickets = [];
+                resolve([]);
+                //;
+            });
+        }
+    );
     //con.end();
     
 }
 
-function insertMultNums(con, numbers){
-    var sql = "INSERT INTO ticket_number (id_ticket, number) VALUES ?"
-    con.query(sql, [numbers], function(err, result){
-        if (err) throw err;
-        //console.log("Number of records inserted: " + result.affectedRows);
+function insertNumbers(numbers, con){
+    return new Promise((resolve, reject) => {
+        var sql = "INSERT INTO ticket_number (id_ticket, number) VALUES ?"
+        con.query(sql, [numbers], function(err, result){
+            if (err) throw err + numbers;
+            console.log("Number of numbers inserted: " + result.affectedRows);
+            resolve([]);
+            //console.log("Number of records inserted: " + result.affectedRows);
+        });
+    });
+}
+
+function addToDb(ticket, numbers, con){
+    return new Promise(async (resolve, reject) => {
+        ticket = await insertTicket(ticket, con);
+        numbers = await insertNumbers(numbers, con);
+        resolve(true);
+    });
+}
+
+function addToDbMul(tickets, numbers, con){
+    return new Promise(async (resolve, reject) => {
+        ticket = await insertMultTickets(tickets, con);
+        numbers = await insertNumbers(numbers, con);
+        resolve([[],[]]);
+    });
+}
+
+function returnIntNumbers(rawLine, id){
+    return new Promise((resolve, reject) => {
+        var rawTable = rawLine.replace('\n').split(',');
+        var numbers = [];
+        for(var i = 0; i < rawTable.length; i++){
+            numbers.push([id, parseInt(rawTable[i])]);
+        }
+        resolve(numbers);
+    });
+}
+
+function genTicket(id){
+    return new Promise((resolve, reject) =>{
+        var today = currentDate().split("-");
+        var date = today[2]+"-"+today[1]+"-"+today[0];
+        var time = today[3]+":"+today[4]+":"+today[5];
+        var ticket = [id, date, time];
+        resolve(ticket);
+    });
+}
+
+function genTicketNA(id){
+    var today = currentDate().split("-");
+    var date = today[2]+"-"+today[1]+"-"+today[0];
+    var time = today[3]+":"+today[4]+":"+today[5];
+    var ticket = [id, date, time];
+    return ticket;
+}
+function returnIntNumbersNA(rawLine, id){
+    var rawTable = rawLine.replace('\n').split(',');
+    var numbers = [];
+    for(var i = 0; i < rawTable.length; i++){
+        numbers.push([id, parseInt(rawTable[i])]);
+    }
+    return numbers;
+}
+
+async function slowReader(line ,last){
+    return new Promise(async (resolve, reject) => {
+        id = await generateID();
+        ticket = await genTicket(id);
+        numbers = await returnIntNumbers(line, id);
+        num = await addToDb(ticket, numbers, con)
+        resolve(num);
+    });
+}
+
+function readCsv(url, con){
+    var lineReader = require('line-reader');
+    var i = 0;
+    lineReader.eachLine(url, async function(line, last) {
+        id = await generateID();
+        ticket = await genTicket(id);
+        numbers = await returnIntNumbers(line, id);
+        num = await addToDb(ticket, numbers, con)
+        i++;
+        console.log(i);
     });
 }
 
 function readCsv2(url, con){
-    var j = 1;
-    var ticketRaw = [];
     var lineReader = require('line-reader');
-    var tickets = [];
-    var numbers = [];
-    lineReader.eachLine(url, function(line, last) {
-        ticketRaw = line.replace('\n', '').split(',');
-        var idTicket = generateID();
-        var today = currentDate().split('-');
-        var date = today[2]+'-'+today[1]+'-'+today[0];
-        var time = today[3]+':'+today[4]+':'+today[5]
-        var values = [idTicket, date, time];
-        tickets.push(values);
-        for(var i = 0; i < ticketRaw.length; i++){
-            numbers.push([idTicket, parseInt(ticketRaw[i])])
+    let tickets = [];
+    let numbers = [];
+    lineReader.eachLine(url, async function(line, last) {
+        id = await generateID();
+        tickets.push(await genTicket(id));
+        var nums = await returnIntNumbers(line, id);
+        for(var i = 0; i < nums.length; i++){
+            numbers.push(nums[i]);
         }
-        console.log(ticketRaw+":"+j);
-        if(j % 10000 == 0){
-            insertMultTickets(con, tickets,() => {
-                insertMultNums(con, numbers, () =>{
-                    console.log(tickets);
-                });
-            });
-            tickets = [];
-            numbers = [];
+        if(tickets.length % 10000 == 0 && tickets.length != 0){
+            await addToDbMul(tickets, numbers, con);
         }
-        j++;
     });
 }
 
-//readCsv("/home/kristjan/naloga_signapps/wetransfer-4bbb14/loterija/lottery.csv", con);
-//insertTicket([1, 2, 3, 4, 5, 6, 7], con);
-readCsv2("/home/kristjan/naloga_signapps/wetransfer-4bbb14/loterija/lottery.csv", con);
-/*var tickets = [
-    ["asdasd", "2011-05-06", "13:15:12"],
-    ["aasdfs", "2013-02-06", "11:19:32"],
-    ["ascxycas", "2014-12-07", "22:19:52"]
-];
+function readCsv3(url, con){
+    var lineReader = require('line-reader');
+    var i = 0;
+    lineReader.eachLine(url, async function(line, last) {
+        id = await generateID();
+        ticket = genTicketNA(id);
+        numbers = returnIntNumbersNA(line, id);
+        num = await addToDb(ticket, numbers, con)
+        i++;
+        console.log(i);
+    });
+}
 
-insertMultTickets(con, tickets);*/
+async function awaitInsert(con){
+    id = await generateID()
+    ticket = await genTicket(id);
+    await insertTicket(ticket, con);
+}
+
+async function getResult(con){
+    console.log(await selectSingleNumber(7, con));
+}
+
+async function getWinners(combination, con){
+    var winners = new Dict();
+    for(var i = 0; i < combination.length; i++){
+        var list = await selectSingleNumber(combination[i], con);
+        for(var j = 0; j < list.length; j++){
+            if(winners.has(list[j])){
+                winners[list[j]]++
+            }
+            else{
+                winners[list[j]] = 1;
+            }
+        }
+    }
+    console.log(winners.length);
+    var keys = winners.keys();
+    console.log(keys);
+    for(key of keys){
+        console.log(key);
+    }
+
+}
+//readCsv("/home/kristjan/naloga_signapps/wetransfer-4bbb14/loterija/lottery.csv", con);
+getWinners([1, 2, 3, 4, 5, 6, 7], con);
