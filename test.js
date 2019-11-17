@@ -44,7 +44,5 @@ function unpack(){
     return "a", "b";
 }
 
-var Dict = require('collections/dict');
-var winners = new Dict();
-winners["test"] = 1;
-console.log(winners["test"]);
+var dict = new Object();
+console.log(dict["nil"] == undefined);

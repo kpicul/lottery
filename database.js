@@ -204,26 +204,45 @@ async function getResult(con){
     console.log(await selectSingleNumber(7, con));
 }
 
-async function getWinners(combination, con){
-    var winners = new Dict();
-    for(var i = 0; i < combination.length; i++){
-        var list = await selectSingleNumber(combination[i], con);
+function processWinners(list, winners){
+    return new Promise((resolve, reject) => {
         for(var j = 0; j < list.length; j++){
-            if(winners.has(list[j])){
+            if(winners[list[j]] != undefined){
                 winners[list[j]]++
             }
             else{
                 winners[list[j]] = 1;
             }
         }
-    }
-    console.log(winners.length);
-    var keys = winners.keys();
-    console.log(keys);
-    for(key of keys){
-        console.log(key);
-    }
+        resolve(winners);
+    });
+}
 
+function getWinners(combination, con){
+    return new Promise(async (resolve, reject) => {
+        var winners = new Object();
+        for(var i = 0; i < combination.length; i++){
+            var list = await selectSingleNumber(combination[i], con);
+            winners = await processWinners(list, winners);
+        }
+        resolve(winners);  
+    });
+}
+function getMore(wins){
+    var keys = Object.keys(wins);
+    for(var i = 0; i < keys.length; i++){
+        if(wins[keys[i]] > 4){
+            console.log(wins[keys[i]]);
+        }
+    }
+}
+
+async function getWins(){
+    var win = await getWinners([1, 2, 3, 4, 5, 60, 57], con);
+    getMore(win);
+    //console.log(win);
 }
 //readCsv("/home/kristjan/naloga_signapps/wetransfer-4bbb14/loterija/lottery.csv", con);
-getWinners([1, 2, 3, 4, 5, 6, 7], con);
+
+var win = getWins();
+//console.log(5 > 3);
