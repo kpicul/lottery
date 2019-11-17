@@ -1,8 +1,6 @@
 const mysql = require('mysql');
 
-const Dict = require('collections/dict');
-
-var con = mysql.createPool({
+const con = mysql.createPool({
     connectionLimit : 150,
     host: "localhost",
     user: "signapps",
@@ -237,6 +235,16 @@ function getMore(wins){
     }
 }
 
+function getNumFrequency(number, con){
+    return new Promise((resolve, reject) => {
+        var sql = "SELECT COUNT(ticket_number.number) AS frequency FROM ticket_number WHERE number = ?";
+        con.query(sql, number, function(err, result){
+            if(err) throw err;
+            resolve(result[0].frequency);
+        });
+    });
+}
+
 async function getWins(){
     var win = await getWinners([1, 2, 3, 4, 5, 60, 57], con);
     getMore(win);
@@ -244,5 +252,5 @@ async function getWins(){
 }
 //readCsv("/home/kristjan/naloga_signapps/wetransfer-4bbb14/loterija/lottery.csv", con);
 
-var win = getWins();
+getNumFrequency(7, con)
 //console.log(5 > 3);
