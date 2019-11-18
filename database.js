@@ -278,6 +278,14 @@ module.exports = {
     getFreq: async function(numbers){
         var wins = await getWinners(numbers);
         return wins;
+    },
+
+    numFreq: async function(){
+        var numfreq = new Object();
+        for(var i = 1; i <= 60; i++){
+            numfreq[i.toString()] = await getNumFrequency(i);
+        }
+        return numfreq;
     }
 }
 //readCsv("/home/kristjan/naloga_signapps/wetransfer-4bbb14/loterija/lottery.csv", con);

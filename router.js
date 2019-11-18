@@ -41,6 +41,26 @@ router.post('/ticketstat', koaBody(), async (ctx) => {
     ctx.body = result;
 });
 
+router.get('/numberstat', async(ctx) => {
+    var nd = await db.numFreq();
+    var slist = [];
+    for(var key in nd){
+        slist.push([key, nd[key]]);
+    }
+    slist.sort((a, b) => {
+        return b[1] - a[1];
+    });
+    //console.log(slist);
+    var sobj = "{"
+    for(var i = 0; i < slist.length; i++){
+        //console.log(slist[i]);
+        sobj+=slist[i][0]+":"+slist[i][1]+",";
+    }
+    sobj+="}"
+    //console.log(sobj);
+    ctx.body = sobj;
+});
+
 app
     .use(router.routes())
     .use(router.allowedMethods())
