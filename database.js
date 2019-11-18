@@ -19,7 +19,7 @@ function currentDate(){
     return dd + '-' + mm + '-' + yyyy + '-' + hh + '-' + min + '-' + sec;
 }
 
-function selectSingleNumber(number,con){
+function selectSingleNumber(number){
     return new Promise((resolve, reject) => {
         var sql = "SELECT ticket_number.id_ticket FROM ticket_number WHERE number = ?";
         var list = [];
@@ -46,7 +46,7 @@ function generateID(){
 }
 
 
-function insertTicket(ticket, con){
+function insertTicket(ticket){
     return new Promise((resolve, reject) => {
         var sql = "INSERT INTO ticket(id_ticket, date_added, time_added) VALUES(?, ?, ?)";
         con.query(sql, ticket, (err) => {
@@ -58,7 +58,7 @@ function insertTicket(ticket, con){
 }
 
 
-function insertMultTickets(tickets, con){
+function insertMultTickets(tickets){
     return new Promise((resolve, reject) => {
             var sql = "INSERT INTO ticket(id_ticket, date_added, time_added) VALUES ?";
             con.query(sql, [tickets], function(err, result){
@@ -74,7 +74,7 @@ function insertMultTickets(tickets, con){
     
 }
 
-function insertNumbers(numbers, con){
+function insertNumbers(numbers){
     return new Promise((resolve, reject) => {
         var sql = "INSERT INTO ticket_number (id_ticket, number) VALUES ?"
         con.query(sql, [numbers], function(err, result){
@@ -86,18 +86,18 @@ function insertNumbers(numbers, con){
     });
 }
 
-function addToDb(ticket, numbers, con){
+function addToDb(ticket, numbers){
     return new Promise(async (resolve, reject) => {
-        ticket = await insertTicket(ticket, con);
-        numbers = await insertNumbers(numbers, con);
+        ticket = await insertTicket(ticket);
+        numbers = await insertNumbers(numbers);
         resolve(true);
     });
 }
 
-function addToDbMul(tickets, numbers, con){
+function addToDbMul(tickets, numbers){
     return new Promise(async (resolve, reject) => {
-        ticket = await insertMultTickets(tickets, con);
-        numbers = await insertNumbers(numbers, con);
+        ticket = await insertMultTickets(tickets);
+        numbers = await insertNumbers(numbers);
         resolve([[],[]]);
     });
 }
@@ -139,30 +139,38 @@ function returnIntNumbersNA(rawLine, id){
     return numbers;
 }
 
+function generateNumbersNA(id, numtable){
+    var numbers = [];
+    for(var i = 0; i < numtable.length; i++){
+        numbers.push([id, numtable[i]]);
+    }
+    return numbers;
+}
+
 async function slowReader(line ,last){
     return new Promise(async (resolve, reject) => {
         id = await generateID();
         ticket = await genTicket(id);
         numbers = await returnIntNumbers(line, id);
-        num = await addToDb(ticket, numbers, con)
+        num = await addToDb(ticket, numbers)
         resolve(num);
     });
 }
 
-function readCsv(url, con){
+function readCsv(url){
     var lineReader = require('line-reader');
     var i = 0;
     lineReader.eachLine(url, async function(line, last) {
         id = await generateID();
         ticket = await genTicket(id);
         numbers = await returnIntNumbers(line, id);
-        num = await addToDb(ticket, numbers, con)
+        num = await addToDb(ticket, numbers)
         i++;
         console.log(i);
     });
 }
 
-function readCsv2(url, con){
+function readCsv2(url){
     var lineReader = require('line-reader');
     let tickets = [];
     let numbers = [];
@@ -174,32 +182,32 @@ function readCsv2(url, con){
             numbers.push(nums[i]);
         }
         if(tickets.length % 10000 == 0 && tickets.length != 0){
-            await addToDbMul(tickets, numbers, con);
+            await addToDbMul(tickets, numbers);
         }
     });
 }
 
-function readCsv3(url, con){
+function readCsv3(url){
     var lineReader = require('line-reader');
     var i = 0;
     lineReader.eachLine(url, async function(line, last) {
         id = await generateID();
         ticket = genTicketNA(id);
         numbers = returnIntNumbersNA(line, id);
-        num = await addToDb(ticket, numbers, con)
+        num = await addToDb(ticket, numbers)
         i++;
         console.log(i);
     });
 }
 
-async function awaitInsert(con){
+async function awaitInsert(){
     id = await generateID()
     ticket = await genTicket(id);
-    await insertTicket(ticket, con);
+    await insertTicket(ticket);
 }
 
-async function getResult(con){
-    console.log(await selectSingleNumber(7, con));
+async function getResult(){
+    console.log(await selectSingleNumber(7));
 }
 
 function processWinners(list, winners){
@@ -216,11 +224,11 @@ function processWinners(list, winners){
     });
 }
 
-function getWinners(combination, con){
+function getWinners(combination){
     return new Promise(async (resolve, reject) => {
         var winners = new Object();
         for(var i = 0; i < combination.length; i++){
-            var list = await selectSingleNumber(combination[i], con);
+            var list = await selectSingleNumber(combination[i]);
             winners = await processWinners(list, winners);
         }
         resolve(winners);  
@@ -235,7 +243,7 @@ function getMore(wins){
     }
 }
 
-function getNumFrequency(number, con){
+function getNumFrequency(number){
     return new Promise((resolve, reject) => {
         var sql = "SELECT COUNT(ticket_number.number) AS frequency FROM ticket_number WHERE number = ?";
         con.query(sql, number, function(err, result){
@@ -245,12 +253,31 @@ function getNumFrequency(number, con){
     });
 }
 
+
 async function getWins(){
-    var win = await getWinners([1, 2, 3, 4, 5, 60, 57], con);
+    var win = await getWinners([1, 2, 3, 4, 5, 60, 57]);
     getMore(win);
     //console.log(win);
 }
-//readCsv("/home/kristjan/naloga_signapps/wetransfer-4bbb14/loterija/lottery.csv", con);
 
-getNumFrequency(7, con)
-//console.log(5 > 3);
+module.exports = {
+    insertSingleTicket: async function(numbers){
+        var id = await generateID();
+        var ticket = genTicketNA(id);
+        var numtable = generateNumbersNA(id, numbers);
+        await addToDb(ticket, numtable);
+        var retobj = new Object();
+        retobj.id = id;
+        retobj.date = ticket[1];
+        retobj.time = ticket[2];
+        retobj.numbers = numbers;
+        retobj.message = "Insert succesfull";
+        return retobj;
+    },
+
+    getFreq: async function(numbers){
+        var wins = await getWinners(numbers);
+        return wins;
+    }
+}
+//readCsv("/home/kristjan/naloga_signapps/wetransfer-4bbb14/loterija/lottery.csv", con);
