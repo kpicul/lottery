@@ -28,4 +28,4 @@ must be json with the winning combination in the key "numbers" - example {"numbe
 * 127.0.0.1:3000/ticket (POST) - inserts the ticket with the given combination. Combination is given with the same json as in ticketstat request.
 It returns the message that the insert was succesfull and the data about inserted ticket (id, time of insertion, date...)
 * 127.0.0.1:3000/csv (POST) - Uploads the csv file with combinations. It inserts the combinations in the database and returns us the simple message that 
-insert was succesfull. It can be slow for big csv files. Max size of the files is 5000 000 000 Bytes.
+insert was succesfull. File is uploaded with body -> form data in postman. WARNING: it can be slow for big csv files. Max size of the files is 5000 000 000 Bytes.
