@@ -2,7 +2,10 @@ const Koa = require("koa");
 const Router = require("koa-router");
 const koaBody = require('koa-body');
 const db = require('./database');
+const multer = require('@koa/multer');
+var formidable = require('koa2-formidable'); 
 
+const upload = multer();
 var app = new Koa();
 var router = new Router();
 
@@ -59,6 +62,13 @@ router.get('/numberstat', async(ctx) => {
     sobj+="}"
     //console.log(sobj);
     ctx.body = sobj;
+});
+
+router.post('/csv', koaBody({multipart: true}), async(ctx, next) => {
+    await next();
+    var file = ctx.request.files.file;
+    await db.csvRead(file.path);
+    ctx.body = "{ message: combinations inserted }"
 });
 
 app

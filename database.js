@@ -197,6 +197,9 @@ function readCsv3(url){
         num = await addToDb(ticket, numbers)
         i++;
         console.log(i);
+        if(last){
+            return i;
+        }
     });
 }
 
@@ -286,6 +289,10 @@ module.exports = {
             numfreq[i.toString()] = await getNumFrequency(i);
         }
         return numfreq;
+    },
+    
+    csvRead: async function(url){
+        await readCsv3(url);
     }
 }
 //readCsv("/home/kristjan/naloga_signapps/wetransfer-4bbb14/loterija/lottery.csv", con);

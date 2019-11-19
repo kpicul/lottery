@@ -7,9 +7,9 @@ const helpers = require('./helpers');
 
 const NUMBER_POOL_SIZE = 60;
 const COMBINATION_LENGTH = 7;
-const COMBINATIONS_COUNT = 150 * 1000 * 1000;
+const COMBINATIONS_COUNT = 200000;
 const BATCH_SIZE = 4 * 1000 * 1000;
-const FILE_PATH = path.resolve(__dirname, './lottery.csv');
+const FILE_PATH = path.resolve(__dirname, './lottery3.csv');
 
 // Delete the "lottery.csv" file if it exists.
 if (fs.existsSync(FILE_PATH)) {
