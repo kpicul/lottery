@@ -2,10 +2,7 @@ const Koa = require("koa");
 const Router = require("koa-router");
 const koaBody = require('koa-body');
 const db = require('./database');
-const multer = require('@koa/multer');
-var formidable = require('koa2-formidable'); 
 
-const upload = multer();
 var app = new Koa();
 var router = new Router();
 
@@ -79,7 +76,6 @@ router.post('/ticketstat', koaBody(), async (ctx) => {
         result['2'] = 0;
         result['1'] = 0;
         for (var i = 0; i < keys.length; i++){
-            //console.log(wins[keys[i]].toString());
             result[wins[keys[i]].toString()]++;
         }
         ctx.body = result;
@@ -95,14 +91,11 @@ router.get('/numberstat', async(ctx) => {
     slist.sort((a, b) => {
         return b[1] - a[1];
     });
-    //console.log(slist);
     var sobj = "{"
     for(var i = 0; i < slist.length; i++){
-        //console.log(slist[i]);
         sobj+=slist[i][0]+":"+slist[i][1]+",";
     }
     sobj+="}"
-    //console.log(sobj);
     ctx.body = sobj;
 });
 

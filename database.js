@@ -61,7 +61,6 @@ function insertNumbers(numbers){
             if (err) reject("Error when inserting numbers " + err);
             console.log("Number of numbers inserted: " + result.affectedRows);
             resolve(true);
-            //console.log("Number of records inserted: " + result.affectedRows);
         });
     });
 }
@@ -222,4 +221,3 @@ module.exports = {
         await readCsv3(url);
     }
 }
-//readCsv("/home/kristjan/naloga_signapps/wetransfer-4bbb14/loterija/lottery.csv", con);
