@@ -33,9 +33,6 @@ function selectSingleNumber(number){
     });
 }
 
-function returnResult(result){
-    console.log(result);
-}
 
 function generateID(){
     return new Promise((resolve, reject) => {
@@ -50,37 +47,20 @@ function insertTicket(ticket){
     return new Promise((resolve, reject) => {
         var sql = "INSERT INTO ticket(id_ticket, date_added, time_added) VALUES(?, ?, ?)";
         con.query(sql, ticket, (err) => {
-            if (err) throw err;
+            if (err) reject("Error when inserting ticket " + err);
             console.log("Ticket inserted");
-            resolve([]);
+            resolve(true);
         });
     })
-}
-
-
-function insertMultTickets(tickets){
-    return new Promise((resolve, reject) => {
-            var sql = "INSERT INTO ticket(id_ticket, date_added, time_added) VALUES ?";
-            con.query(sql, [tickets], function(err, result){
-                if (err) throw err;
-                console.log("Number of tickets inserted: " + result.affectedRows)
-                tickets = [];
-                resolve([]);
-                //;
-            });
-        }
-    );
-    //con.end();
-    
 }
 
 function insertNumbers(numbers){
     return new Promise((resolve, reject) => {
         var sql = "INSERT INTO ticket_number (id_ticket, number) VALUES ?"
         con.query(sql, [numbers], function(err, result){
-            if (err) throw err + numbers;
+            if (err) reject("Error when inserting numbers " + err);
             console.log("Number of numbers inserted: " + result.affectedRows);
-            resolve([]);
+            resolve(true);
             //console.log("Number of records inserted: " + result.affectedRows);
         });
     });
@@ -89,16 +69,18 @@ function insertNumbers(numbers){
 function addToDb(ticket, numbers){
     return new Promise(async (resolve, reject) => {
         ticket = await insertTicket(ticket);
-        numbers = await insertNumbers(numbers);
-        resolve(true);
-    });
-}
-
-function addToDbMul(tickets, numbers){
-    return new Promise(async (resolve, reject) => {
-        ticket = await insertMultTickets(tickets);
-        numbers = await insertNumbers(numbers);
-        resolve([[],[]]);
+        if(ticket){
+            numbers = await insertNumbers(numbers);
+            if(numbers){
+                resolve(true);
+            }
+            else{
+                reject("Error when inserting  "+ numbers);
+            }
+        }
+        else{
+            reject("Error when inserting "+ ticket)
+        }
     });
 }
 
@@ -147,70 +129,22 @@ function generateNumbersNA(id, numtable){
     return numbers;
 }
 
-async function slowReader(line ,last){
-    return new Promise(async (resolve, reject) => {
-        id = await generateID();
-        ticket = await genTicket(id);
-        numbers = await returnIntNumbers(line, id);
-        num = await addToDb(ticket, numbers)
-        resolve(num);
-    });
-}
-
-function readCsv(url){
-    var lineReader = require('line-reader');
-    var i = 0;
-    lineReader.eachLine(url, async function(line, last) {
-        id = await generateID();
-        ticket = await genTicket(id);
-        numbers = await returnIntNumbers(line, id);
-        num = await addToDb(ticket, numbers)
-        i++;
-        console.log(i);
-    });
-}
-
-function readCsv2(url){
-    var lineReader = require('line-reader');
-    let tickets = [];
-    let numbers = [];
-    lineReader.eachLine(url, async function(line, last) {
-        id = await generateID();
-        tickets.push(await genTicket(id));
-        var nums = await returnIntNumbers(line, id);
-        for(var i = 0; i < nums.length; i++){
-            numbers.push(nums[i]);
-        }
-        if(tickets.length % 10000 == 0 && tickets.length != 0){
-            await addToDbMul(tickets, numbers);
-        }
-    });
-}
-
 function readCsv3(url){
-    var lineReader = require('line-reader');
-    var i = 0;
-    lineReader.eachLine(url, async function(line, last) {
-        id = await generateID();
-        ticket = genTicketNA(id);
-        numbers = returnIntNumbersNA(line, id);
-        num = await addToDb(ticket, numbers)
-        i++;
-        console.log(i);
-        if(last){
-            return i;
-        }
+    return new Promise(async (resolve, reject) => {
+        var lineReader = require('line-reader');
+        var i = 0;
+        lineReader.eachLine(url, async function(line, last) {
+            id = await generateID();
+            ticket = genTicketNA(id);
+            numbers = returnIntNumbersNA(line, id);
+            num = await addToDb(ticket, numbers)
+            i++;
+            console.log(i);
+            if(last){
+                resolve(true);
+            }
+        });
     });
-}
-
-async function awaitInsert(){
-    id = await generateID()
-    ticket = await genTicket(id);
-    await insertTicket(ticket);
-}
-
-async function getResult(){
-    console.log(await selectSingleNumber(7));
 }
 
 function processWinners(list, winners){
@@ -254,13 +188,6 @@ function getNumFrequency(number){
             resolve(result[0].frequency);
         });
     });
-}
-
-
-async function getWins(){
-    var win = await getWinners([1, 2, 3, 4, 5, 60, 57]);
-    getMore(win);
-    //console.log(win);
 }
 
 module.exports = {
